@@ -139,12 +139,44 @@ def gen_one(song, gap=45, model="AceStep_1_5_Base"):
     rid = submit(payload)
     url = poll(rid)
     if url:
-        download(url, out)
+        path = download(url, out)
+        if path:
+            write_provenance(path, song, model, caption, lyrics, rid)
     else:
         print("  NO_URL")
     if gap:
         print(f"  wait {gap}s...")
         time.sleep(gap)
+
+def write_provenance(path, song, model, caption, lyrics, rid):
+    """Ghi metadata bản quyền kèm file nhạc (Proof of Authorship)."""
+    prov = os.path.join(os.path.dirname(path), "_PROVENANCE.txt")
+    ts = time.strftime("%Y-%m-%d %H:%M:%S")
+    lines = [
+        "DINO UNIVERSE — MUSIC GENERATION PROVENANCE",
+        "© 2026 Dino Universe. All rights reserved.",
+        "-------------------------------------------",
+        f"File: {os.path.basename(path)}",
+        f"Title: {song.get('Title', song.get('_key',''))}",
+        f"Source ID: {song.get('ID', song.get('_key',''))}",
+        f"Model: {model}",
+        f"DEAPI request_id: {rid}",
+        f"Generated: {ts}",
+        f"Engine: DeAPI txt2music (AceStep)",
+        f"Owner: Nam Hoài / Dino Universe IP",
+        "",
+        "CAPTION:",
+        caption,
+        "",
+        "LYRICS:",
+        lyrics,
+        "",
+        "CORE NON-NEGOTIABLES CHECK: no violence, child-safe (2-8y), positive moral message.",
+    ]
+    # append (not overwrite) so all songs log in one file
+    with open(prov, "a", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n\n")
+    print("  PROVENANCE logged")
 
 def main():
     if not TOKEN:
