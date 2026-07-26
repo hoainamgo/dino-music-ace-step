@@ -111,33 +111,43 @@ Chorus2 lines
 - Poll + download thành công (script `gen_dino_music.py`).
 - Bài demo: "Rex's Morning Song" (ID 1) → giọng child voice, ukulele.
 
-## 10. BẢO VỆ BẢN QUYỀN (BẮT BUỘC KHI TẠO NHẠC)
-Mọi bài hát Dino sinh ra ĐỀU thuộc sở hữu IP Dino Universe. Quy trình tạo nhạc PHẢI tuân thủ:
+## 10. BẢO VỆ BẢN QUYỀN — CHECKLIST (BẮT BUỘC KHI TẠO NHẠC)
+Mọi bài hát Dino sinh ra ĐỀU thuộc sở hữu IP Dino Universe. Tick ✅ từng bước trước khi phát hành.
 
-### A. Tuyên bố bản quyền (watermark)
-- Mọi file phát hành / chia sẻ bắt buộc có dòng:
-  `© 2026 Dino Universe. All rights reserved.`
-- Script tự ghi dòng này vào `_PROVENANCE.txt` kèm mỗi file nhạc (model, caption, lyrics, timestamp, request_id).
+### ☑ BƯỚC 1 — Tuyên bố bản quyền (Watermark)
+- [ ] Mỗi file nhạc có kèm `_PROVENANCE.txt` ghi dòng `© 2026 Dino Universe. All rights reserved.`
+- [ ] Khi đăng tải (FB/YT) có ghi chú bản quyền trong caption/mô tả
+- [ ] File gốc FLAC giữ nguyên, không re-encode (bằng chứng gốc)
 
-### B. Proof of Authorship (bằng chứng sáng tạo)
-- Lưu file nhạc + metadata vào git repo Dino Universe (commit có timestamp không thể sửa).
-- File `_PROVENANCE.txt` ghi: DEAPI request_id, model, thời gian tạo, nguồn lyrics (ID từ musics.json).
-- Giữ nguyên FLAC gốc (không re-encode) làm bằng chứng gốc.
+### ☑ BƯỚC 2 — Proof of Authorship (Bằng chứng sáng tạo)
+- [ ] File nhạc + `_PROVENANCE.txt` đã commit vào git repo Dino Universe (timestamp không sửa được)
+- [ ] `_PROVENANCE.txt` ghi đủ: DEAPI request_id, model, thời gian tạo, Source ID từ musics.json
+- [ ] Lưu log vào `audio/generated/_PROVENANCE.txt` (script tự làm)
 
-### C. Nội dung phải đúng Core Non-negotiables
-- Không bạo lực, không quái vật đáng sợ, an toàn tuyệt đối cho trẻ 2-8t.
-- Tôn trọng Kinh Thánh (nếu có yếu tố tôn giáo).
-- Tiny Rex nhất quán: xanh lá + khăn đỏ (chỉ áp dụng nếu có lời nhắc đến hình ảnh).
-- Lời bài hát mang thông điệp đạo đức tích cực (yêu thương, chia sẻ, dũng cảm...).
+### ☑ BƯỚC 3 — Nội dung đúng Core Non-negotiables
+- [ ] Không bạo lực, không quái vật đáng sợ
+- [ ] An toàn tuyệt đối cho trẻ 2-8 tuổi
+- [ ] Tôn trọng Kinh Thánh (nếu có yếu tố tôn giáo)
+- [ ] Tiny Rex nhất quán: xanh lá + khăn đỏ (nếu nhắc đến hình ảnh)
+- [ ] Lời bài hát mang thông điệp đạo đức tích cực (yêu thương, chia sẻ, dũng cảm...)
 
-### D. Đăng ký bảo hộ (theo IP_Protection_Guidelines.md)
-- Tác phẩm âm nhạc → đăng ký bản quyền VN (Cục Bản quyền) + US Copyright (ưu tiên).
-- Giữ log tạo nhạc (`generated/_PROVENANCE.txt`) làm bằng chứng ngày sáng tạo.
+### ☑ BƯỚC 4 — Đăng ký bảo hộ (theo IP_Protection_Guidelines.md)
+- [ ] Đăng ký bản quyền VN (Cục Bản quyền Tác giả) — ưu tiên cao
+- [ ] Đăng ký US Copyright (ưu tiên trung bình)
+- [ ] Đăng ký EU Copyright (nếu cần)
+- [ ] Giữ `_PROVENANCE.txt` làm bằng chứng ngày sáng tạo
 
-### E. Không dùng commercial mà không license
-- Nhạc sinh bằng DeAPI (AceStep) thuộc quyền anh Hoài / Dino Universe.
-- Không đăng tải lên nền tảng thương mại (Spotify, Apple Music) khi chưa có phê duyệt khai thác thương mại (License Layer).
-- FB/YouTube (kênh Dino Universe) dùng được vì là kênh sở hữu.
+### ☑ BƯỚC 5 — Khai thác thương mại (License Layer)
+- [ ] FB/YouTube kênh Dino Universe: ✅ dùng được (kênh sở hữu)
+- [ ] Spotify / Apple Music / Platform thương mại: ❌ cần phê duyệt License Layer trước
+- [ ] Không chuyển giao IP cho bên thứ 3 khi chưa có NDA + License văn bản
+
+### ☑ BƯỚC 6 — Giám sát vi phạm
+- [ ] Thiết lập Google Alerts từ khóa "Dino Universe", "Tiny Rex"
+- [ ] Định kỳ check xem có bản nhạc bị đăng trái phép không
+
+---
+**QUY TẮC VÀNG:** Tạo xong → commit git + provenance → check non-negotiables → mới đăng.
 - Chưa push GitHub (cần GitHub PAT; repo dự kiến `dino-music-ace-step`).
 
 Xem `references/turbo_api_notes.md` để biết danh sách model đã verify + trích dẫn docs ACE-Step về giọng hát.
