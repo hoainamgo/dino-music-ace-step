@@ -4,6 +4,7 @@ import { isBuiltInPinyinVoice, predictPiperVoice } from "../lib/piperVoiceRuntim
 import { predictMmsVoice } from "../lib/mmsVoiceRuntime.js";
 import { isModelDownloadError, loadFromModelHubs } from "../lib/modelSources.js";
 import { clearPiperCacheIfStorageTight, isPiperSymbolError, isStorageQuotaError, prepareTextForVoice, TtsInputError } from "../lib/ttsText.js";
+import { resolveBackend } from "../config/modelBackend.js";
 
 export function useVoiceGeneration(d) {
   return useCallback(async (captionSegment = null) => {
@@ -15,6 +16,37 @@ export function useVoiceGeneration(d) {
       const message = error instanceof TtsInputError ? d.t(error.code) : error instanceof Error ? error.message : d.t("ttsErrorVoiceMismatch");
       d.setStatus("error"); d.setStatusText(message); d.setProgress(0); d.notify(message); return;
     }
+
+    const backend = resolveBackend("tts");
+    if (backend === "local") {
+      d.setVoiceTab("synthesis"); d.setStatus("generating"); d.setStatusText("TTS via local backend"); d.setProgress(10);
+      try {
+        const url = BACKENDS.local.ttsUrl;
+        const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: prepared.text, voiceId: d.selectedVoice.id, speed: d.speed }) });
+        if (!res.ok) { const t = await res.text(); throw new Error(`Local TTS failed: ${res.status} ${t}`); }
+        const blob = await res.blob();
+        await d.commitAudio(blob, `${d.selectedVoice.name} · ${d.t("ttsGenerated")}`, { captionSegment, script: rawText });
+        d.notify(d.t("ttsNoticeGenerated")); return;
+      } catch (error) {
+        d.setStatus("error"); d.setStatusText(error instanceof Error ? error.message : d.t("ttsErrorGenerationFailed")); d.setProgress(0); d.notify(d.t("ttsErrorGenerationFailed")); return;
+      }
+    }
+
+    if (backend === "deapi") {
+      d.setVoiceTab("synthesis"); d.setStatus("generating"); d.setStatusText("TTS via DeAPI"); d.setProgress(10);
+      try {
+        const baseUrl = import.meta?.env?.VITE_DEAPI_BASE_URL || "https://api.deapi.ai/api/v1";
+        const apiKey = import.meta?.env?.VITE_DEAPI_KEY || "";
+        const res = await fetch(`${baseUrl}/client/txt2audio`, { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ text: prepared.text, voice: d.selectedVoice.id === "mai_linh" ? "Mai" : d.selectedVoice.id === "my_yen" ? "MyYen" : "Serena", model: "Qwen3_TTS_12Hz_1_7B_CustomVoice", lang: "English", format: "mp3", sample_rate: 24000, speed: d.speed }) });
+        if (!res.ok) { const t = await res.text(); throw new Error(`DeAPI TTS failed: ${res.status} ${t}`); }
+        const blob = await res.blob();
+        await d.commitAudio(blob, `${d.selectedVoice.name} · ${d.t("ttsGenerated")}`, { captionSegment, script: rawText });
+        d.notify(d.t("ttsNoticeGenerated")); return;
+      } catch (error) {
+        d.setStatus("error"); d.setStatusText(error instanceof Error ? error.message : d.t("ttsErrorGenerationFailed")); d.setProgress(0); d.notify(d.t("ttsErrorGenerationFailed")); return;
+      }
+    }
+
     d.setVoiceTab("synthesis"); d.setStatus("generating"); d.setStatusText("ttsStatusPreparingModel"); d.setProgress(6);
     if (prepared.warningKey) d.notify(d.t(prepared.warningKey));
     try {

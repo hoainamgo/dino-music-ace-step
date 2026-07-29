@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { transcribeAudioToCaptionSegments } from "../lib/asr.js";
 import { sliceAudioBlob } from "../lib/media.js";
+import { resolveBackend } from "../config/modelBackend.js";
 
 export function localizeAutoCaptionPhase(phase, t) {
   const text = String(phase || "");

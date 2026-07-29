@@ -4,6 +4,7 @@ import { buildEnglishMusicPrompt, createAiMusicFileName, translateMusicDescripti
 import { repeatPcm16WavAtBestBoundary } from "../lib/aiMusicLoop.js";
 import { decodeWaveform } from "../lib/media.js";
 import { getModelSourcePreference } from "../lib/modelSources.js";
+import { resolveBackend } from "../config/modelBackend.js";
 
 export function useAiMusicGeneration({ activeLanguage, imageUrlRefs, setActiveTool, setMediaTab, setSelectedLibraryAssetId, setUserAssets }) {
   const workerRef = useRef(null);
@@ -27,6 +28,85 @@ export function useAiMusicGeneration({ activeLanguage, imageUrlRefs, setActiveTo
       setJob({ state: "error", progress: 0, phase: "", error: error?.message || String(error) });
       return;
     }
+
+    const backend = resolveBackend("music");
+    const requestedSeconds = Number(selection.seconds) || 30;
+
+    if (backend === "deapi") {
+      setJob({ state: "running", progress: 0.1, phase: "deapi-submitting", error: "" });
+      try {
+        const baseUrl = BACKENDS.deapi.baseUrl;
+        const apiKey = BACKENDS.deapi.apiKey || "";
+        const res = await fetch(`${baseUrl}/txt2audio`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: prompt,
+            voice: process.env.VITE_DEAPI_MUSIC_VOICE || "Serena",
+            model: process.env.VITE_DEAPI_MUSIC_MODEL || "ace-step-1.5",
+            lang: "English",
+            format: "mp3",
+            sample_rate: 24000,
+          }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`DeAPI music failed: ${res.status} ${text}`);
+        }
+        const blob = await res.blob();
+        const src = URL.createObjectURL(blob);
+        imageUrlRefs.current.add(src);
+        const asset = {
+          id: crypto.randomUUID(), type: "audio", kind: "music",
+          name: createAiMusicFileName(selection), meta: `AI music · ${requestedSeconds}s`,
+          src, previewSrc: src, blob, duration: requestedSeconds, peaks: [],
+          provider: `DeAPI ${process.env.VITE_DEAPI_MUSIC_MODEL || "ace-step-1.5"}`,
+          generated: true, prompt,
+        };
+        setUserAssets((current) => [asset, ...current]);
+        setSelectedLibraryAssetId(asset.id);
+        setActiveTool("media"); setMediaTab("mine");
+        setJob({ state: "complete", progress: 1, phase: "complete", error: "" });
+        return;
+      } catch (error) {
+        setJob({ state: "error", progress: 0, phase: "", error: error?.message || String(error) });
+        return;
+      }
+    }
+
+    if (backend === "local") {
+      setJob({ state: "running", progress: 0.1, phase: "local-submitting", error: "" });
+      try {
+        const musicUrl = BACKENDS.local.musicUrl;
+        const res = await fetch(musicUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, seconds: requestedSeconds }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Local music failed: ${res.status} ${text}`);
+        }
+        const blob = await res.blob();
+        const src = URL.createObjectURL(blob);
+        imageUrlRefs.current.add(src);
+        const asset = {
+          id: crypto.randomUUID(), type: "audio", kind: "music",
+          name: createAiMusicFileName(selection), meta: `AI music · ${requestedSeconds}s`,
+          src, previewSrc: src, blob, duration: requestedSeconds, peaks: [],
+          provider: "Local music backend", generated: true, prompt,
+        };
+        setUserAssets((current) => [asset, ...current]);
+        setSelectedLibraryAssetId(asset.id);
+        setActiveTool("media"); setMediaTab("mine");
+        setJob({ state: "complete", progress: 1, phase: "complete", error: "" });
+        return;
+      } catch (error) {
+        setJob({ state: "error", progress: 0, phase: "", error: error?.message || String(error) });
+        return;
+      }
+    }
+
     await navigator.storage?.persist?.().catch(() => false);
     const worker = workerRef.current ?? new Worker(new URL("../workers/ai-music.worker.js", import.meta.url), { type: "module" });
     const warmRuntime = Boolean(workerRef.current);
@@ -44,14 +124,13 @@ export function useAiMusicGeneration({ activeLanguage, imageUrlRefs, setActiveTo
         return;
       }
       if (data.type !== "complete") return;
-      const requestedSeconds = Number(selection.seconds) || 30;
       const wav = requestedSeconds > 60
         ? repeatPcm16WavAtBestBoundary(data.wav, 2, 5)
         : data.wav;
-      const blob = new Blob([wav], { type: "audio/wav" });
-      const src = URL.createObjectURL(blob);
+      const wavBlob = new Blob([wav], { type: "audio/wav" });
+      const src = URL.createObjectURL(wavBlob);
       imageUrlRefs.current.add(src);
-      const decoded = await decodeWaveform(blob, 96);
+      const decoded = await decodeWaveform(wavBlob, 96);
       const asset = {
         id: crypto.randomUUID(),
         type: "audio",
@@ -60,7 +139,7 @@ export function useAiMusicGeneration({ activeLanguage, imageUrlRefs, setActiveTo
         meta: `AI music · ${decoded.duration.toFixed(1)}s`,
         src,
         previewSrc: src,
-        blob,
+        blob: wavBlob,
         duration: decoded.duration,
         peaks: decoded.peaks,
         provider: "Stable Audio 3 Small · ONNX",
@@ -81,7 +160,7 @@ export function useAiMusicGeneration({ activeLanguage, imageUrlRefs, setActiveTo
     worker.postMessage({
       type: "generate",
       prompt,
-      seconds: (Number(selection.seconds) || 30) / (Number(selection.seconds) > 60 ? 2 : 1),
+      seconds: requestedSeconds / (requestedSeconds > 60 ? 2 : 1),
       steps: 8,
       seed: Math.floor(Math.random() * 0x7fffffff),
       modelSourcePreference: getModelSourcePreference(activeLanguage),
