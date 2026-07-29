@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { useCallback } from "react";
 import { transcribeAudioToCaptionSegments } from "../lib/asr.js";
 import { sliceAudioBlob } from "../lib/media.js";
 import { resolveBackend } from "../config/modelBackend.js";
@@ -35,10 +36,25 @@ export function useAutoCaptions(d) {
       const clipBlob = Number.isFinite(options.duration)
         ? await sliceAudioBlob(inputBlob, options.sourceStart || 0, options.duration)
         : inputBlob;
-      const result = await transcribeAudioToCaptionSegments(clipBlob, {
-        preferredLanguage: d.uiLanguage, timelineOffset,
-        onProgress: ({ progress, phase }) => { d.setProgress((current) => Math.max(current, progress)); d.setStatusText(localizeAutoCaptionPhase(phase, d.t)); },
-      });
+
+      const backend = resolveBackend("asr");
+      let result;
+      if (backend === "local") {
+        d.setStatusText("ASR via local Whisper"); d.setProgress(8);
+        const asrUrl = import.meta?.env?.VITE_LOCAL_ASR_URL || "http://localhost:8788/asr";
+        const fd = new FormData();
+        fd.append("audio", clipBlob, "audio.wav");
+        const res = await fetch(asrUrl, { method: "POST", body: fd });
+        if (!res.ok) { const t = await res.text(); throw new Error(`Local ASR failed: ${res.status} ${t}`); }
+        const data = await res.json();
+        result = { text: data.text || "", segments: (data.segments || []).map((seg, idx) => ({ id: `caption-${Date.now()}-${idx}`, text: seg.text, start: seg.start, end: seg.end, hidden: false, source: "asr" })) };
+      } else {
+        result = await transcribeAudioToCaptionSegments(clipBlob, {
+          preferredLanguage: d.uiLanguage, timelineOffset,
+          onProgress: ({ progress, phase }) => { d.setProgress((current) => Math.max(current, progress)); d.setStatusText(localizeAutoCaptionPhase(phase, d.t)); },
+        });
+      }
+
       d.setCaptionSegments((segments) => {
         const combined = (options.append ? [...segments, ...result.segments] : result.segments)
           .sort((a, b) => (a.start || 0) - (b.start || 0));
