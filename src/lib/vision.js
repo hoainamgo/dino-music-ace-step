@@ -1,6 +1,7 @@
 const pendingVisionRequests = new Map();
 
 let visionWorker = null;
+import { resolveBackend } from "../config/modelBackend.js";
 
 function createRequestId() {
   if (globalThis.crypto?.randomUUID) {
@@ -159,6 +160,27 @@ export function analyzeVisualSubject(input, legacyOptions = {}) {
   const worker = getVisionWorker();
   if (!worker) {
     return Promise.reject(new Error("当前浏览器不支持 Worker 视觉分析。"));
+  }
+
+  const backend = resolveBackend("ocr");
+  if (backend === "local") {
+    const ocrUrl = import.meta?.env?.VITE_LOCAL_OCR_URL || "http://localhost:8790/ocr";
+    try {
+      const fd = new FormData();
+      fd.append("image", blob, "image.jpg");
+      const res = await fetch(ocrUrl, { method: "POST", body: fd });
+      if (!res.ok) { const t = await res.text(); throw new Error(`Local OCR failed: ${res.status} ${t}`); }
+      const data = await res.json();
+      return {
+        requestId: crypto.randomUUID(),
+        text: data.text || "",
+        detections: [],
+        subject: null,
+        source: "ocr-local",
+      };
+    } catch (error) {
+      return Promise.reject(error);
+    }
   }
 
   const requestId = createRequestId();
