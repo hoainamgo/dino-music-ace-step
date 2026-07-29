@@ -67,3 +67,22 @@ Read [references/current-capabilities.md](references/current-capabilities.md) wh
 For public explanations, route one question to one page: use [docs/agent-video-editing.md](docs/agent-video-editing.md) for what Timeline Studio is; the platform guide for [Codex](docs/codex-video-editing.md), [Claude Code](docs/claude-code-video-editing.md), [GitHub Copilot](docs/github-copilot-video-editing.md), or [Gemini CLI](docs/gemini-cli-video-editing.md) for discovery and invocation; [docs/examples.md](docs/examples.md) for reproducible cases; [docs/command-reference.md](docs/command-reference.md) for exact runner syntax; and [docs/comparison.md](docs/comparison.md) for FFmpeg, CapCut, and Remotion comparisons. Do not load all public pages unless the user asks for a broad overview.
 
 If a requested operation is unsupported, keep the valid partial timeline unchanged and state the exact missing command or runtime capability.
+
+## Local AI backend (optional)
+
+Timeline Studio can offload AI music, voiceover, captions, and OCR to local PC services through `.env.local`.
+
+- Switch: `MODEL_BACKEND=local` or `deapi`
+- Service endpoints:
+  - `LOCAL_MUSIC_URL=http://<host>:8787/music`
+  - `LOCAL_TTS_URL=http://<host>:8789/tts`
+  - `LOCAL_ASR_URL=http://<host>:8788/asr`
+  - `LOCAL_OCR_URL=http://<host>:8790/ocr`
+
+PC-side service files live in `src/services/` inside this repo:
+- `music_pc_service.py` -> ACE Step 1.5 / 302.ai Suno fallback
+- `tts_pc_service.py` -> Kokoro local TTS
+- `asr_pc_service.py` -> Whisper small local ASR
+- `ocr_pc_service.py` -> Vilao/DeepSeek vision OCR
+
+Browser behavior is preserved when `MODEL_BACKEND=browser`. Use the local path only when the user explicitly asks to run on-device or offline.
