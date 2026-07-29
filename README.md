@@ -79,6 +79,18 @@ It helps an agent:
 - verify track placement, transitions, captions, overlays, audible audio, and final export artifacts;
 - keep the editable `.timeline` project as the source of truth instead of returning only an opaque render.
 
+## ACE Step 1.5 — local music backend
+
+ACE Step 1.5 is the local-first optional path for music generation.
+
+- Model: **ACE Step 1.5** (Apache-2.0, 3.5B)
+- GPU requirements: RTX 3090 / 4090 / A100 class; incompatible with Quadro P1000 4GB
+- Contract: `POST http://<host>:8787/music` → `{ prompt, seconds, bpm?, key?, instrumental? }` → audio blob
+- Frontend switch: `.env.local`
+  - `MODEL_BACKEND=local`
+  - `LOCAL_MUSIC_URL=http://<host>:8787/music`
+- Fallback: browser Stable Audio 3 ONNX when local service is unreachable
+
 The versioned headless command runner loads and inspects portable projects, validates revisioned JSON plans, applies supported operations transactionally, supports dry runs and idempotent operation IDs, and writes a new `.timeline` archive without rewriting its media files. It also renders the documented portable Visuals + Voiceover + Music subset to a verified H.264/AAC MP4. Browser control remains the compatibility path for richer compositions and operations that are not in the command registry yet.
 
 ```bash
